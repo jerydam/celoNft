@@ -12,9 +12,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Votes.sol";
 
 contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ownable, ERC721Burnable, EIP712, ERC721Votes {
     uint256 private _nextTokenId;
-
-    // Mapping to keep track of addresses that have successfully minted
     mapping(address => bool) private _mintedSuccessfully;
+    mapping(uint256 => string) private _tokenNames;
+    mapping(uint256 => string) private _tokenSymbols;
 
     constructor(address initialOwner)
         ERC721("MyNft", "MNFT")
@@ -30,21 +30,19 @@ contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ow
         _unpause();
     }
 
-    function safeMint(address to, string memory uri) public onlyOwner {
+    function safeMint(address to, string memory uri, string memory name, string memory symbol) public onlyOwner {
         uint256 tokenId = _nextTokenId++;
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
-
-        // Mark the address as having successfully minted
         _mintedSuccessfully[to] = true;
+        _setTokenName(tokenId, name);
+        _setTokenSymbol(tokenId, symbol);
     }
 
-    // Function to check if an address has successfully minted
     function hasMintedSuccessfully(address account) public view returns (bool) {
         return _mintedSuccessfully[account];
     }
 
-    // Function to get all addresses that have successfully minted
     function getAllMintedSuccessfully() public view returns (address[] memory) {
         uint256 count = 0;
         for (uint256 i = 0; i < _nextTokenId; i++) {
@@ -64,8 +62,6 @@ contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ow
 
         return result;
     }
-
-    // The following functions are overrides required by Solidity.
 
     function _update(address to, uint256 tokenId, address auth)
         internal
@@ -98,5 +94,13 @@ contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ow
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    function _setTokenName(uint256 tokenId, string memory name) internal {
+        _tokenNames[tokenId] = name;
+    }
+
+    function _setTokenSymbol(uint256 tokenId, string memory symbol) internal {
+        _tokenSymbols[tokenId] = symbol;
     }
 }
