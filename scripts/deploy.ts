@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 
 async function main() {
   
-  const nftContract = await ethers.deployContract("MyNft");
+  const nftContract = await ethers.deployContract("MyNft, 0x3207D4728c32391405C7122E59CCb115A4af31eA");
   const [owner] = await ethers.getSigners();
   await nftContract.waitForDeployment();
 
