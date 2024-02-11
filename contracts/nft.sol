@@ -10,51 +10,55 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Votes.sol";
 
-contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ownable, ERC721Burnable, EIP712, ERC721Votes {
+contract MyNFT is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ownable, ERC721Burnable, ERC721Votes {
     uint256 private _nextTokenId;
     mapping(address => bool) private _mintedSuccessfully;
     mapping(uint256 => string) private _tokenNames;
     mapping(uint256 => string) private _tokenSymbols;
 
     constructor(address initialOwner)
-        ERC721("MyNft", "MNFT")
+        ERC721("MyNFT", "MNFT")
         Ownable(initialOwner)
-        EIP712("MyNft", "1")
-    {}
+        ERC721Votes()
+    {
+        _nextTokenId = 1; // Start token IDs from 1
+    }
 
-    function pause() public onlyOwner {
+    function pause() external onlyOwner {
         _pause();
     }
 
-    function unpause() public onlyOwner {
+    function unpause() external onlyOwner {
         _unpause();
     }
 
-    function safeMint(address to, string memory uri, string memory name, string memory symbol) public {
-        uint256 tokenId = _nextTokenId++;
+    function safeMint(address to, string memory uri, string memory name, string memory symbol) external {
+        require(to != address(0), "Invalid address");
+        uint256 tokenId = _nextTokenId;
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
         _mintedSuccessfully[to] = true;
         _setTokenName(tokenId, name);
         _setTokenSymbol(tokenId, symbol);
+        _nextTokenId++; // Increment token ID for the next minting
     }
 
-    function hasMintedSuccessfully(address account) public view returns (bool) {
+    function hasMintedSuccessfully(address account) external view returns (bool) {
         return _mintedSuccessfully[account];
     }
 
-    function getAllMintedSuccessfully() public view returns (address[] memory) {
+    function getAllMintedSuccessfully() external view returns (address[] memory) {
         uint256 count = 0;
-        for (uint256 i = 0; i < _nextTokenId; i++) {
-            if (_mintedSuccessfully[ownerOf(i)]) {
+        for (uint256 i = 1; i < _nextTokenId; i++) {
+            if (_exists(i) && _mintedSuccessfully[ownerOf(i)]) {
                 count++;
             }
         }
 
         address[] memory result = new address[](count);
         uint256 index = 0;
-        for (uint256 i = 0; i < _nextTokenId; i++) {
-            if (_mintedSuccessfully[ownerOf(i)]) {
+        for (uint256 i = 1; i < _nextTokenId; i++) {
+            if (_exists(i) && _mintedSuccessfully[ownerOf(i)]) {
                 result[index] = ownerOf(i);
                 index++;
             }
@@ -63,36 +67,15 @@ contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ow
         return result;
     }
 
-    function _update(address to, uint256 tokenId, address auth)
-        internal
-        override(ERC721, ERC721Enumerable, ERC721Pausable, ERC721Votes)
-        returns (address)
-    {
-        return super._update(to, tokenId, auth);
+    function _burn(uint256 tokenId) internal virtual override(ERC721, ERC721URIStorage) {
+        super._burn(tokenId);
     }
 
-    function _increaseBalance(address account, uint128 value)
-        internal
-        override(ERC721, ERC721Enumerable, ERC721Votes)
-    {
-        super._increaseBalance(account, value);
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal virtual override(ERC721, ERC721Enumerable, ERC721Pausable) {
+        super._beforeTokenTransfer(from, to, tokenId);
     }
 
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721, ERC721URIStorage)
-        returns (string memory)
-    {
-        return super.tokenURI(tokenId);
-    }
-
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, ERC721Enumerable, ERC721URIStorage)
-        returns (bool)
-    {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721Enumerable) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 
