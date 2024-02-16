@@ -30,14 +30,36 @@ contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ow
         _unpause();
     }
 
-    function safeMint(address to, string memory uri, string memory name, string memory symbol) public {
-        uint256 tokenId = _nextTokenId++;
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
-        _mintedSuccessfully[to] = true;
-        _setTokenName(tokenId, name);
-        _setTokenSymbol(tokenId, symbol);
-    }
+    function safeMint(address to, string memory uri, string memory name, string memory symbol) public onlyOwner {
+    // Validate recipient address
+    require(to != address(0), "Invalid recipient address");
+
+    // Validate URI
+    require(bytes(uri).length > 0, "URI must not be empty");
+
+    // Check if address has already minted a token
+    require(!_mintedSuccessfully[to], "Address has already minted a token");
+
+    // Generate token ID securely
+    uint256 tokenId = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, _nextTokenId)));
+
+    // Mint the token
+    _safeMint(to, tokenId);
+
+    // Set the token URI
+    _setTokenURI(tokenId, uri);
+
+    // Mark address as successfully minted
+    _mintedSuccessfully[to] = true;
+
+    // Set token name and symbol
+    _setTokenName(tokenId, name);
+    _setTokenSymbol(tokenId, symbol);
+
+    // Emit event for successful minting
+    emit Minted(tokenId, to, uri);
+}
+
 
     function hasMintedSuccessfully(address account) public view returns (bool) {
         return _mintedSuccessfully[account];
