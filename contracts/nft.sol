@@ -11,10 +11,10 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Votes.sol";
 
 contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ownable, ERC721Burnable, EIP712, ERC721Votes {
+    using SafeMath for uint256;
+
     uint256 private _nextTokenId;
-    mapping(address => bool) private _mintedSuccessfully;
-    mapping(uint256 => string) private _tokenNames;
-    mapping(uint256 => string) private _tokenSymbols;
+    mapping(address => bool) private _hasMinted;
 
     constructor(address initialOwner)
         ERC721("MyNft", "MNFT")
@@ -22,107 +22,76 @@ contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ow
         EIP712("MyNft", "1")
     {}
 
-    function pause() public onlyOwner {
+    function pause() external onlyOwner {
         _pause();
     }
 
-    function unpause() public onlyOwner {
+    function unpause() external onlyOwner {
         _unpause();
     }
 
-    function safeMint(address to, string memory uri, string memory name, string memory symbol) public onlyOwner {
-    // Validate recipient address
-    require(to != address(0), "Invalid recipient address");
+    function safeMint(address to, string memory uri) external onlyOwner {
+        // Validate recipient address and URI
+        require(to != address(0), "Invalid recipient address");
+        require(bytes(uri).length > 0, "URI must not be empty");
 
-    // Validate URI
-    require(bytes(uri).length > 0, "URI must not be empty");
+        // Check if address has already minted a token
+        require(!_hasMinted[to], "Address has already minted a token");
 
-    // Check if address has already minted a token
-    require(!_mintedSuccessfully[to], "Address has already minted a token");
+        // Mint the token using the counter-based approach
+        uint256 tokenId = _nextTokenId;
+        _safeMint(to, tokenId);
 
-    // Generate token ID securely
-    uint256 tokenId = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, _nextTokenId)));
+        // Set the token URI
+        _setTokenURI(tokenId, uri);
 
-    // Mint the token
-    _safeMint(to, tokenId);
+        // Mark address as successfully minted
+        _hasMinted[to] = true;
 
-    // Set the token URI
-    _setTokenURI(tokenId, uri);
+        // Increment the next token ID
+        _nextTokenId = _nextTokenId.add(1);
 
-    // Mark address as successfully minted
-    _mintedSuccessfully[to] = true;
-
-    // Set token name and symbol
-    _setTokenName(tokenId, name);
-    _setTokenSymbol(tokenId, symbol);
-
-    // Emit event for successful minting
-    emit Minted(tokenId, to, uri);
-}
-
-
-    function hasMintedSuccessfully(address account) public view returns (bool) {
-        return _mintedSuccessfully[account];
+        // Emit event for successful minting
+        emit Minted(tokenId, to, uri);
     }
 
-    function getAllMintedSuccessfully() public view returns (address[] memory) {
+    function hasMintedSuccessfully(address account) external view returns (bool) {
+        return _hasMinted[account];
+    }
+
+    function getAllMintedSuccessfully() external view returns (address[] memory) {
         uint256 count = 0;
+        address[] memory result = new address[](_nextTokenId);
+
         for (uint256 i = 0; i < _nextTokenId; i++) {
-            if (_mintedSuccessfully[ownerOf(i)]) {
+            address owner = ownerOf(i);
+            if (_hasMinted[owner]) {
+                result[count] = owner;
                 count++;
             }
         }
 
-        address[] memory result = new address[](count);
-        uint256 index = 0;
-        for (uint256 i = 0; i < _nextTokenId; i++) {
-            if (_mintedSuccessfully[ownerOf(i)]) {
-                result[index] = ownerOf(i);
-                index++;
-            }
+        // Resize the result array to the actual count
+        assembly {
+            mstore(result, count)
         }
 
         return result;
     }
 
-    function _update(address to, uint256 tokenId, address auth)
-        internal
-        override(ERC721, ERC721Enumerable, ERC721Pausable, ERC721Votes)
-        returns (address)
-    {
+    function _update(address to, uint256 tokenId, address auth) internal override(ERC721, ERC721Enumerable, ERC721Pausable, ERC721Votes) returns (address) {
         return super._update(to, tokenId, auth);
     }
 
-    function _increaseBalance(address account, uint128 value)
-        internal
-        override(ERC721, ERC721Enumerable, ERC721Votes)
-    {
+    function _increaseBalance(address account, uint128 value) internal override(ERC721, ERC721Enumerable, ERC721Votes) {
         super._increaseBalance(account, value);
     }
 
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721, ERC721URIStorage)
-        returns (string memory)
-    {
+    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         return super.tokenURI(tokenId);
     }
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, ERC721Enumerable, ERC721URIStorage)
-        returns (bool)
-    {
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721Enumerable, ERC721URIStorage) returns (bool) {
         return super.supportsInterface(interfaceId);
-    }
-
-    function _setTokenName(uint256 tokenId, string memory name) internal {
-        _tokenNames[tokenId] = name;
-    }
-
-    function _setTokenSymbol(uint256 tokenId, string memory symbol) internal {
-        _tokenSymbols[tokenId] = symbol;
     }
 }
