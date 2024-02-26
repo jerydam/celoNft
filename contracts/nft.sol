@@ -16,6 +16,8 @@ contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ow
     mapping(uint256 => string) private _tokenNames;
     mapping(uint256 => string) private _tokenSymbols;
 
+    event Minted(uint256 indexed tokenId, address indexed to, string uri);
+
     constructor(address initialOwner)
         ERC721("MyNft", "MNFT")
         Ownable(initialOwner)
@@ -31,35 +33,34 @@ contract MyNft is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ow
     }
 
     function safeMint(address to, string memory uri, string memory name, string memory symbol) public onlyOwner {
-    // Validate recipient address
-    require(to != address(0), "Invalid recipient address");
+        // Validate recipient address
+        require(to != address(0), "Invalid recipient address");
 
-    // Validate URI
-    require(bytes(uri).length > 0, "URI must not be empty");
+        // Validate URI
+        require(bytes(uri).length > 0, "URI must not be empty");
 
-    // Check if address has already minted a token
-    require(!_mintedSuccessfully[to], "Address has already minted a token");
+        // Check if address has already minted a token
+        require(!_mintedSuccessfully[to], "Address has already minted a token");
 
-    // Generate token ID securely
-    uint256 tokenId = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, _nextTokenId)));
+        // Generate token ID securely
+        uint256 tokenId = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, _nextTokenId)));
 
-    // Mint the token
-    _safeMint(to, tokenId);
+        // Mint the token
+        _safeMint(to, tokenId);
 
-    // Set the token URI
-    _setTokenURI(tokenId, uri);
+        // Set the token URI
+        _setTokenURI(tokenId, uri);
 
-    // Mark address as successfully minted
-    _mintedSuccessfully[to] = true;
+        // Mark address as successfully minted
+        _mintedSuccessfully[to] = true;
 
-    // Set token name and symbol
-    _setTokenName(tokenId, name);
-    _setTokenSymbol(tokenId, symbol);
+        // Set token name and symbol
+        _setTokenName(tokenId, name);
+        _setTokenSymbol(tokenId, symbol);
 
-    // Emit event for successful minting
-    emit Minted(tokenId, to, uri);
-}
-
+        // Emit event for successful minting
+        emit Minted(tokenId, to, uri);
+    }
 
     function hasMintedSuccessfully(address account) public view returns (bool) {
         return _mintedSuccessfully[account];
